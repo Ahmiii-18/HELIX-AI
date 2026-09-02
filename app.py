@@ -5,6 +5,16 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from dotenv import load_dotenv, find_dotenv
 
+selected_model = st.selectbox(
+        "Choose Gemini Model",
+        options=[
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-2.0-flash-exp"
+        ],
+        index=0
+    )
+
 # Load environment variables (.env file)
 load_dotenv(find_dotenv(), override=True)
 
