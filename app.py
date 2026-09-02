@@ -1,7 +1,6 @@
 import os
 import streamlit as st
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from openai import OpenAI
 from dotenv import load_dotenv, find_dotenv
 
 # Load environment variables (.env file)
@@ -261,11 +260,11 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-section-label">Engine</div>', unsafe_allow_html=True)
     selected_model = st.selectbox(
-        "Choose Gemini Model",
+        "Choose OpenAI Model",
         options=[
-            "gemini-1.5-flash",
-            "gemini-1.5-pro",
-            "gemini-2.0-flash-exp"
+            "gpt-4o-mini",
+            "gpt-4o",
+            "gpt-3.5-turbo"
         ],
         index=0
     )
@@ -278,49 +277,55 @@ with st.sidebar:
 
     st.markdown(
         '<div style="margin-top:1.5rem; font-size:0.72rem; color:#5c6270;">'
-        'HELIX AI · powered by Gemini</div>',
+        'HELIX AI · powered by OpenAI</div>',
         unsafe_allow_html=True
     )
 
 # Maintain system prompt
 if not st.session_state.messages:
-    st.session_state.messages.append(SystemMessage(content=system_role))
-elif isinstance(st.session_state.messages[0], SystemMessage):
-    st.session_state.messages[0] = SystemMessage(content=system_role)
+    st.session_state.messages.append({"role": "system", "content": system_role})
+else:
+    st.session_state.messages[0] = {"role": "system", "content": system_role}
 
 # Render chat history
 for msg in st.session_state.messages[1:]:
-    if isinstance(msg, HumanMessage):
+    if msg["role"] == "user":
         with st.chat_message("user", avatar="🧑‍💻"):
-            st.write(msg.content)
-    elif isinstance(msg, AIMessage):
+            st.write(msg["content"])
+    elif msg["role"] == "assistant":
         with st.chat_message("assistant", avatar="🧬"):
-            st.write(msg.content)
+            st.write(msg["content"])
 
 # Handle chat input and streaming
 if user_prompt := st.chat_input("Ask Helix AI anything..."):
-    st.session_state.messages.append(HumanMessage(content=user_prompt))
+    st.session_state.messages.append({"role": "user", "content": user_prompt})
     with st.chat_message("user", avatar="🧑‍💻"):
         st.write(user_prompt)
 
     with st.chat_message("assistant", avatar="🧬"):
-        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        # Retrieve OpenAI API Key
+        api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
         if not api_key:
-            response_text = "Add GOOGLE_API_KEY or GEMINI_API_KEY to your secrets to enable Helix AI."
+            response_text = "Add OPENAI_API_KEY to your environment variables or secrets to enable Helix AI."
             st.error(response_text)
         else:
             try:
-                model = ChatGoogleGenerativeAI(
+                client = OpenAI(api_key=api_key)
+                
+                # Stream completion from OpenAI directly
+                stream = client.chat.completions.create(
                     model=selected_model,
+                    messages=st.session_state.messages,
                     temperature=0.2,
-                    google_api_key=api_key,
+                    stream=True
                 )
+                
                 response_text = st.write_stream(
-                    chunk.content
-                    for chunk in model.stream(st.session_state.messages)
+                    chunk.choices[0].delta.content or ""
+                    for chunk in stream
                 )
             except Exception as error:
                 response_text = f"I couldn't complete that request: {error}"
                 st.error(response_text)
 
-        st.session_state.messages.append(AIMessage(content=response_text))
+        st.session_state.messages.append({"role": "assistant", "content": response_text})
