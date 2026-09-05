@@ -239,7 +239,7 @@ st.markdown("""
                 <span class="helix-title-color">HELIX AI</span>
             </span>
         </div>
-        <div class="helix-subtitle">Unwinding complexity. Inspired by the era of Tesla.</div>
+        <div class="helix-subtitle">Unwinding complexity! Inspired by the era of Tesla.</div>
     </div>
 """, unsafe_allow_html=True)
 
